@@ -1,0 +1,149 @@
+<?php
+# Get Matching Results from Controller
+use Application\Controller\CoreController;
+
+$aMatchingResults = $this->aPartialData['aMatchingResults'];
+$aMatchingResultViewCriterias = $this->aPartialData['aViewCriterias'];
+
+# Get linked Book
+$iLinkedBook = $this->oItem->getTextField('book_idfs');
+
+# Only show matching if we are not already linked
+if($iLinkedBook == 0) {
+    ?>
+    <ul class="list-group">
+        <?php
+        foreach ($aMatchingResults as $oBook) {
+            ?>
+            <li class="list-group-item">
+                <?= $this->translate('Book') . ': <b>' . $oBook->getLabel() . '</b>' ?>
+                &nbsp;<a href="<?= $this->url('book', ['action' => 'view', 'id' => $oBook->getID()]) ?>"
+                         title="<?= $this->translate('View book') ?>">
+                    <i class="fas fa-external-link-square-alt"></i>
+                </a>
+                <?php
+                # Loop over all matching criterias which could be shown
+                foreach (array_keys($aMatchingResultViewCriterias) as $sCriteria) {
+                    $aCriteriaInfo = $aMatchingResultViewCriterias[$sCriteria];
+
+                    # type based output
+                    switch ($aCriteriaInfo['type']) {
+                        case 'multiselect':
+                            $aCategories = $oBook->getMultiSelectField($sCriteria);
+                            # only show value if book really has it
+                            if (count($aCategories) > 0) {
+                                echo '<br/>';
+                                echo '<small>';
+                                echo $this->translate($aCriteriaInfo['label']) . ': ';
+                                foreach ($oBook->getMultiSelectField($sCriteria, true) as $oCt) {
+                                    echo $oCt->getLabel() . ',';
+                                }
+                                echo '</small>';
+                            }
+                            break;
+                        case 'select':
+                            $iSelectFieldID = $oBook->getSelectFieldID($sCriteria);
+                            # only show value if book really has it
+                            if ($iSelectFieldID != 0) {
+                                echo '<br/>';
+                                echo '<small>';
+                                echo $this->translate($aCriteriaInfo['label']) . ': ';
+                                $oSelectFieldValue = $oBook->getSelectField($sCriteria);
+                                echo $oSelectFieldValue->getLabel() . ',';
+                                echo '</small>';
+                            }
+                            break;
+                        case 'text':
+                            if ($oBook->getTextField($sCriteria)) {
+                                $sVal = $oBook->getTextField($sCriteria);
+                                echo '<div class="row"><div class="col-md-3">';
+                                echo '<small>' . $this->translate($aCriteriaInfo['label']) . ': ';
+                                echo $sVal;
+                                echo '</small></div>';
+                                # optional notice and visual comparison for result
+                                if ($aCriteriaInfo['compare_notice']) {
+                                    # Compare textfield between Book and Bookrequest
+                                    if ($sVal != $this->oItem->getTextField($aCriteriaInfo['bookrequest_field'])) {
+                                        if ($this->oItem->getTextField($aCriteriaInfo['bookrequest_field']) != '') {
+                                            echo '<div class="col-md-3">';
+                                            echo '<small class="alert alert-info">';
+                                            echo $this->translate($aCriteriaInfo['label']) . ' ' . $this->translate('looking for') . ':';
+                                            echo '&nbsp;<b>' . $this->oItem->getTextField($aCriteriaInfo['bookrequest_field']) . '</b>';
+                                            echo '</small>';
+                                            echo '</div>';
+                                        }
+                                    } else {
+                                        echo '<div class="col-md-3"><i class="fas fa-check text-success"></i>';
+                                        echo ' <small>' . $this->translate($aCriteriaInfo['label']) . ' ' . $this->translate('exact match') . '!</small>';
+                                        echo '</div>';
+                                    }
+                                }
+                                echo '</div>';
+                            }
+                            break;
+                        case 'currency':
+                            if ($oBook->getTextField($sCriteria)) {
+                                echo '<div class="row"><div class="col-md-3"><b>' . $this->translate($aCriteriaInfo['label']) . ': ';
+                                echo '€ ' . number_format($oBook->getTextField($sCriteria), 2, '.', '\'');
+                                echo '</b></div>';
+                                if ($aCriteriaInfo['compare_notice']) {
+                                    if ($oBook->getTextField($sCriteria) > $this->oItem->getTextField($aCriteriaInfo['bookrequest_field'])) {
+                                        echo '<div class="col-md-3"><b class="alert alert-danger">';
+                                        echo '<b>€ ' . number_format($oBook->getTextField($sCriteria) - $this->oItem->getTextField($aCriteriaInfo['bookrequest_field']), 2, '.', '\'');
+                                        echo '</b>&nbsp;' . $this->translate('over') . ' ' . $this->translate($aCriteriaInfo['label']) . '</b></div>';
+                                    } else {
+                                        echo '<div class="col-md-3"><b class="alert alert-success"> ';
+                                        echo $this->translate($aCriteriaInfo['label']) . ' is matching</b></div>';
+                                    }
+                                }
+                                echo '</div>';
+
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                ?>
+                <a class="btn btn-primary"
+                   href="/bookrequest/success/<?= $this->oItem->getID() ?>-<?= $oBook->getID() ?>">
+                    <?= $this->translate('Choose Book & Close Request') ?>
+                </a>
+            </li>
+        <?php } ?>
+    </ul>
+    <?php
+} else {
+    $oBookTbl = false;
+    try {
+        $oBookTbl = CoreController::$oServiceManager->get(\OnePlace\Book\Model\BookTable::class);
+    } catch(\RuntimeException $e) {
+        ?>
+        <div class="alert alert-warning">
+            <?=$this->translate('could not load book table')?>
+        </div>
+        <?php
+    }
+
+    $oBook = false;
+    if($oBookTbl) {
+        try {
+            $oBook = $oBookTbl->getSingle($iLinkedBook);
+        } catch(\RuntimeException $e) {
+            ?>
+            <div class="alert alert-warning">
+                <?=$this->translate('could not find linked book')?>
+            </div>
+            <?php
+        }
+    }
+
+    if($oBook) { ?>
+        <h3><?=$this->translate('Matching was successful')?></h3>
+        <p><?=$this->translate('Linked Book')?>: <a href="<?=$this->url('book',['action'=>'view','id'=>$oBook->getID()])?>" title="<?=$this->translate('View Book')?>">
+                <?=$oBook->getLabel()?>
+            </a></p>
+    <?php
+    }
+
+}

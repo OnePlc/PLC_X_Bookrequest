@@ -1,0 +1,53 @@
+<?php
+use Application\Controller\CoreController;
+use OnePlace\Bookrequest\Model\BookrequestTable;
+
+try {
+    # Load Book Requests from Database
+    $oReqTbl = CoreController::$oServiceManager->get(BookrequestTable::class);
+    $oReqsOpen = $oReqTbl->fetchAll(false);
+
+    # Set default data
+    $aMatched = [];
+    $iOpenCount = 0;
+
+    # get data from db
+    if(count($oReqsOpen) > 0) {
+        foreach($oReqsOpen as $oReq) {
+            # check if we got open matchings
+            if(count($oReq->getMatchingResults()) > 0) {
+                $aMatched[] = $oReq;
+            }
+            $iOpenCount++;
+        }
+    }
+    ?>
+    <!-- Book Request Widget -->
+    <div class="col-md-3 col-xl-3">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-actions float-right">
+                    <div class="dropdown show">
+                        <a href="#" data-toggle="dropdown" data-display="static">
+                            <i class="align-middle" data-feather="more-horizontal"></i>
+                        </a>
+
+                        <div class="dropdown-menu dropdown-menu-right">
+                            <a class="dropdown-item" href="#">Something else here</a>
+                        </div>
+                    </div>
+                </div>
+                <h5 class="card-title mb-0"><?=$this->translate('Book Request')?> - <?=$this->translate('Matchings')?></h5>
+            </div>
+            <div class="card-body h-100">
+                <?php $sClass = (count($aMatched) > 0) ? 'warning' : 'dark'; ?>
+                <h3 class="badge badge-<?=$sClass?>" style="font-size:24px;"><?=count($aMatched)?></h3> <?=$this->translate('Matchings')?><br/>
+                <small><span class="badge badge-dark" style="font-size:10px;"><?=$iOpenCount-count($aMatched)?></span> <?=$this->translate('Requests open without a match')?></small>
+            </div>
+        </div>
+    </div>
+    <!-- Book Request Widget -->
+<?php
+} catch(\RuntimeException $e) {
+    echo 'could not load widget data';
+}

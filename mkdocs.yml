@@ -1,0 +1,13 @@
+docs_dir: docs/book
+site_dir: docs/html
+nav:
+  - Home: index.md
+  - 'Quick Start': quick-start.md
+  - Reference:
+      - 'Options': options.md
+site_name: oneplace-bookrequest
+site_description: "onePlace Application Bookrequest Module"
+repo_url: 'https://github.com/OnePlc/PLC_X_Bookrequest'
+theme: bootstrap4
+extra:
+  project: onePlc
